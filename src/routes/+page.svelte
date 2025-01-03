@@ -2,6 +2,7 @@
   <title>Brendan Scullion</title>
 </svelte:head>
 
+
 <h1 class="text-3xl mb-6">Brendan Scullion</h1>
 
 <div class="prose">

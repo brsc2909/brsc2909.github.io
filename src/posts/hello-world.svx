@@ -7,8 +7,6 @@ keywords: "fractional cto, cto services, tech leadership, cost-effective solutio
 published: true
 ---
 
-# Hello World
-
 This is my first blog post. Welcome to my blog!
 
 ## Why I Started This Blog

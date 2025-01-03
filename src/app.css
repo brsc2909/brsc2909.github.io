@@ -5,6 +5,8 @@
 body {
   font-family: "Courier New", monospace;
   max-width: 800px;
+  background-color: #f0f0f0;
+  color: #333;
   margin: 0 auto;
   padding: 2rem;
   line-height: 1.6;
