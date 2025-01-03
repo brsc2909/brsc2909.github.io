@@ -6,7 +6,7 @@ author: Brendan Scullion
 keywords: "fractional cto, cto services, tech leadership, cost-effective solutions, business growth"
 published: true
 ---
-**NOTE**: This article to assumes you have NGINX and local DNS configure correctly if not check out [this article](TBC) to get started.
+**NOTE**: This article to assumes you have NGINX and local DNS configure correctly if not check out  to get started.
 
 If you're building web applications, then you've probably run into this before. You need to run your local environment over HTTPS because you're connecting to some third party API (maybe Facebook login etc.). You create an SSL cert, add it to your NGINX config, open your browser and bypass the `NET::ERR_CERT_AUTHORITY_INVALID` warning.
 
