@@ -9,7 +9,7 @@ const config = {
 	kit: {
 		adapter: adapter()
 	},
-	extensions: ['.svelte', '.svx'],
+	extensions: ['.svelte', ...mdsvexConfig.extensions],
 	preprocess: [
 		vitePreprocess(),
 		mdsvex(mdsvexConfig)

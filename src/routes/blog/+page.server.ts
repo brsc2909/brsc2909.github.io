@@ -22,12 +22,13 @@ export async function load() {
 
 	publishedPosts.sort((a, b) => (new Date(a.date) > new Date(b.date) ? -1 : 1));
 
-    
+
 
     return {
       posts: publishedPosts
     };
-  } catch (e) {
+  } catch (e: unknown) {
+    console.error(e);
     throw error(500, 'Could not load blog posts');
   }
 } 
