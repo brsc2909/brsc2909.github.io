@@ -1,0 +1,24 @@
+---
+title: Hello World
+date: '2024-03-20'
+description: "Discover how fractional CTO services can provide strategic technical leadership while optimizing costs for your growing business."
+author: Brendan Scullion
+keywords: "fractional cto, cto services, tech leadership, cost-effective solutions, business growth"
+published: true
+---
+
+# Hello World
+
+This is my first blog post. Welcome to my blog!
+
+## Why I Started This Blog
+
+I decided to start this blog to share my thoughts and experiences...
+
+## What to Expect
+
+I'll be writing about various topics including:
+
+- Technology
+- Personal projects
+- Random musings 
