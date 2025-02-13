@@ -4,8 +4,9 @@
 
 <header class="mb-8">
 	<nav class="flex gap-6 mb-12">
-		<a href="/">home</a>
-		<a href="/blog">blog</a>
+		<a href="/">Home</a>
+		<a href="/blog">Blog</a>
+		<a href="/cv">CV / Resume</a>
 	</nav>
 </header>
 

@@ -1,0 +1,41 @@
+# .cursorrules
+# Project: Svelte5 SvelteKit
+# Style: Minimalistic, Bauhaus-inspired with monospace, serif, and industrial fonts on plain backgrounds
+
+1. Documentation & Comments
+   - Every page, component, or function must begin with a comment describing its purpose and the context in which it was created.
+     Example:
+         // Purpose: [What it does]
+         // Context: [Why it was created]
+   - make sure to use the correct syntax for the language you are using. ie .svelte files use html comments and .js files use js comments.
+   - Use the Svelte5 style guide for coding standards.
+
+
+2. Styling Guidelines
+   - Use Tailwind CSS for styling.
+   - Update the tailwind.config.js file to include the new styles.
+   - Adopt a minimalistic design aesthetic influenced by Bauhaus principles.
+   - Use a combination of monospace, serif, and industrial fonts on plain backgrounds.
+   - Maintain a restrained color palette and uncluttered layout.
+
+3. Code Quality & Structure
+   - Follow SvelteKit and Svelte5 best practices for component design and file organization.
+   - Adhere to DRY (Don't Repeat Yourself) and modular design principles.
+   - Use clear, consistent naming conventions and structured code organization.
+
+4. Version Control
+   - Write clear, concise commit messages.
+   - Use feature branches with descriptive names and maintain code review practices.
+
+5. Performance & Accessibility
+   - Use semantic HTML and optimize components for responsiveness.
+   - Implement lazy loading for resource-intensive components where appropriate.
+   - Ensure accessibility standards are met.
+
+6. Security
+   - Validate and sanitize all external inputs.
+   - Follow established web security best practices.
+
+7. Testing & Maintenance
+   - Write unit and integration tests for critical functionality.
+   - Maintain an up-to-date test suite and documentation for future maintenance.
