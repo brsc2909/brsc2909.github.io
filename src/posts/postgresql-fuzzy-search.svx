@@ -7,81 +7,94 @@ keywords: "postgresql, fuzzy, search, text, similarity, phonetic, levenshtein, t
 published: true
 ---
 
-So you have a bunch of data that comes from some human source (Free text form fields, reviews, blogs, classified ads, social media) and you want to do some analysis on it. but with people being the way they are, you're going to have some problems:
-1. A lot of words are commonly miss-spelled (definitely-> definitly etc).
-2. Regional differences. e.g American and British English (color/colour, analyse/analyze)
-3. Creative ways of spelling to add dramatic effect. (heyyy, whaaaaat!, noooo!)
+When working with human-generated text data (such as form fields, reviews, blogs, classified ads, or social media), several challenges arise that can affect your ability to analyze the data effectively:
 
-All of this, plus more will affect your results and make it difficult to do any accurate analysis of the data (such as grouping similar topics together, etc). Luckily PostgreSQL comes packaged with a number of really useful tools that make life a lot easier for us. This is a complex topic and I'm only going to touch on the basics. But there is enough here to cover most basic and possibly some more complex use-cases.
+1. Common misspellings (e.g., "definitely" → "definitly")
+2. Regional spelling variations (e.g., American vs. British English: "color"/"colour", "analyze"/"analyse")
+3. Stylistic variations for emphasis (e.g., "heyyy", "whaaaaat!", "noooo!")
 
-## Simple Pattern matching (A little Fuzzy)
-#### LIKE
-Useful when you have a good idea of what the data and queries look like but it's difficult to create something generic enough to be useful in a general text dataset. With this, you only have two ways to match the text. `%` is used as a wildcard for 0 or more characters of any value, and `_` matches a single character of any value.
+These variations make it difficult to perform accurate analysis, such as grouping similar topics together. Fortunately, PostgreSQL provides several powerful tools to handle these challenges. While this is a complex topic, we'll cover the basics and some common use cases that should address most scenarios.
 
- - `LIKE`: use wildcards and character substitution, Case sensitive
+## Simple Pattern Matching (A Little Fuzzy)
+### LIKE Operator
+The LIKE operator is useful when you have a good understanding of your data patterns but need some flexibility in matching. It provides two wildcard characters:
+- `%`: Matches zero or more characters of any value
+- `_`: Matches exactly one character of any value
+
+PostgreSQL offers three variations:
+ - `LIKE`: Case-sensitive pattern matching with wildcards
 ```sql
 SELECT 'Hello world' LIKE 'He__o %';  -- TRUE
 ```
- - `ILIKE`: use wildcards and character substitution, Case insensitive
+ - `ILIKE`: Case-insensitive pattern matching with wildcards
 ```sql
 SELECT 'Hello world' ILIKE 'h_llo _%'; -- TRUE
 ```
- - `NOT LIKE`/`NOT ILIKE`: inverse of LIKE or ILIKE
+ - `NOT LIKE`/`NOT ILIKE`: Inverse of LIKE or ILIKE operations
 ```sql
 SELECT 'Hello world' NOT ILIKE '%_llo world%'; -- FALSE
 ```
 
-#### Regex
-A little more advanced than the "LIKE" operator. With regex, you have a lot more control over the pattern matching. PostgreSQL comes with two standard ways to do this.
- - `[NOT] SIMILAR TO`: Uses a simpler SQL standard expression syntax which is kind of like a mix between the LIKE syntax and POSIX regular expressions. You can prepend `NOT` to negate the expression.
+### Regular Expressions
+Regular expressions provide more sophisticated pattern matching capabilities. PostgreSQL supports two types of regex operations:
+ - `[NOT] SIMILAR TO`: Uses SQL-standard expression syntax, combining elements of LIKE syntax with POSIX regular expressions
 ```sql
 SELECT 'Hello world' SIMILAR TO 'H(e|a)l+o %'; --TRUE
 ```
- - `~`/`!~`/`~*`/`!~*`: More powerful POSIX syntax that you may already be familiar with in other languages. `*` makes the expressions case-insensitive. `!` negates the expression
+ - `~`/`!~`/`~*`/`!~*`: Uses full POSIX regular expression syntax
+   - `~`: Case-sensitive matching
+   - `~*`: Case-insensitive matching
+   - `!`: Negates the match
 ```sql
 SELECT 'Hello world' ~ '^H(e|a)l{1,2}o [a-zA-Z]{5}$'; -- TRUE
 ```
 
-### Improving performance
-In certain scenarios it's possible to speed up your queries using a special operator class for a BTREE index. `text_pattern_ops` and `varchar_pattern_ops` allow you to index a text or varchar field. However, this is only effective if your queries are *left-anchored* (No leading wildcard) e.g `WHERE text_fields LIKE 'hell_ %'`
+### Improving Performance
+You can optimize pattern matching queries using special operator classes for BTREE indexes: `text_pattern_ops` and `varchar_pattern_ops`. These indexes are effective only for left-anchored patterns (no leading wildcard), such as:
+```sql
+WHERE text_field LIKE 'hell_ %'
+```
 
+For more details on pattern matching capabilities, see the [PostgreSQL Pattern Matching Documentation](https://www.postgresql.org/docs/current/functions-matching.html).
 
-I've only covered the basics of what you can do with regex and PostgreSQL, so I suggest looking at the docs below to learn more.
+## Text Search Vectors (Fuzzy-ish)
+Full-text search using tsvector is one of the most efficient options for searching text data. It works by:
+1. Removing stop words (common words like "it", "the", "as", "by")
+2. Eliminating duplicates
+3. Reducing words to their root form (stemming)
 
-**See:** [PostgreSQL Docs -> pattern-matchine](https://www.postgresql.org/docs/current/functions-matching.html)
+For example, words like "quick" and "quickly" are reduced to "quick", while "product", "production", and "products" become "product". This provides some fuzzy matching capability since exact word matches aren't required.
 
-## Text Search Vectors (Fuzzy(ish))
-This is probably the most efficient option for performing a full-text search. It works by removing all the stop words (it, the, as, by, ...) and duplicates from your text and reducing each word into its main component. For example *quick*, *quickly* just becomes *quick* and *product*, *production*, *products* becomes *product*. This provides a small bit of fuzziness to results as the query does not need the exact word. One caveat with tsvectors is that to use it effectively you need to know the language of the text. you can use the `'simple'` config option but you lose a lot of the efficiencies.
+Note: To use tsvector effectively, you need to specify the text language. While you can use the 'simple' configuration, it loses many of the efficiency benefits.
 
-The first function you'll need is `to_tsvector(config, text)`. The result of this is a special datatype `tsvector` that contains each component along with its index in the original text.
+First, use `to_tsvector(config, text)` to create a tsvector, which contains each word component and its position in the original text:
 
 ```sql
-select to_tsvector('english', 'the quick brown fox ran quickly to the other foxes');
+SELECT to_tsvector('english', 'the quick brown fox ran quickly to the other foxes');
                to_tsvector
 -------------------------------------
  'brown':3 'fox':4,10 'quick':2,6 'ran':5
 (1 row)
 ```
 
-The second thing you need is the query generator, which comes in a few different flavors
- - `to_tsquery(config, text) -> tsquery`: Creates a basic query from a single token or multiple if
-used with boolean operators.
+Next, you'll need a query generator. PostgreSQL provides several options:
+ - `to_tsquery(config, text)`: Creates a basic query from tokens with boolean operators
 ```sql
 SELECT to_tsquery('english', 'hello');  --> 'hello'
 -- OR
 SELECT to_tsquery('english', 'hello & worlds');  --> 'hello' & 'world'
 ```
 
- - `plainto_tsquery(config, text) -> tsquery`: Accepts a more generic search term. by default each word in the query is an "&" operation
+ - `plainto_tsquery(config, text)`: Handles generic search terms, connecting words with AND operations
 ```sql
 SELECT plainto_tsquery('english', 'hello world'); --> 'hello' & 'world'
 ```
- - `websearch_to_tsquery(config, text) -> tsquery`: This one is a bit more sophisticated and my favourite. It uses a google type syntax for searching.
+ - `websearch_to_tsquery(config, text)`: Provides Google-style search syntax
 ```sql
 SELECT websearch_to_tsquery('simple', '"hello there" -world');  -->  'hello' <-> 'there' & !'world'
 ```
 
-### Example usage
+### Example Usage
 ```sql
 SELECT message FROM mock_data
 WHERE
@@ -97,7 +110,7 @@ LIMIT 5;
 ```
 
 ### Improving performance
-To get some really good performance on your queries. Create a generated column with the tsvector data and then add a GIN index to that column.
+To achieve optimal query performance, create a generated column with the tsvector data and add a GIN index to that column:
 ```sql
 ALTER TABLE mock_data
     ADD COLUMN ts_message_col tsvector
@@ -124,61 +137,58 @@ LIMIT 5;
 ## Trigrams (Fuzzier)
 > [pg_trgm](https://www.postgresql.org/docs/current/pgtrgm.html) module required: `CREATE extension pg_trgm;`
 
-As the name suggests, a trigram is a series of three consecutive characters from a string. For example, take the string *"Hello world".*
+A trigram consists of three consecutive characters from a string. For example, here are the trigrams for the string "Hello world":
 ```sql
 SELECT show_trgm('Hello world');
                            show_trgm
 ---------------------------------------------------------------
  {"  h","  w"," he"," wo",ell,hel,"ld ",llo,"lo ",orl,rld,wor}
 ```
-In PostgreSQL, trigrams are used to generate a similarity score between two strings.
-[pg_trgm](https://www.postgresql.org/docs/current/pgtrgm.html) provides us with three functions for this:
- - `similarity(string, string)`: Similarity between the whole first and second string
+
+PostgreSQL uses trigrams to generate similarity scores between strings. The [pg_trgm](https://www.postgresql.org/docs/current/pgtrgm.html) module provides three functions:
+ - `similarity(string, string)`: Calculates similarity between two complete strings
 ```sql
 SELECT similarity('hello', 'Helo world'); --> 0.30769232
 -- OR
 SELECT 1 - ('hello' <-> 'Helo world');  --> 0.307692289352417
 ```
- - `word_similarity(string, string)`: The greatest similarity between the first string and any substring of the second string
+ - `word_similarity(string, string)`: Returns the highest similarity between the first string and any substring of the second string
 ```sql
 SELECT word_similarity('hello', 'Helo world'); --> 0.5714286
 -- OR
 SELECT 1 - ('hello' <<-> 'Helo world'); --> 0.5714285969734192
 ```
- - `strict_word_similarity(string, string)`: The greatest similarity between the first string and any whole word in the second string
+ - `strict_word_similarity(string, string)`: Returns the highest similarity between the first string and any complete word in the second string
 ```sql
 SELECT strict_word_similarity('hello', 'Helo world'); --> 0.5714286
 -- OR
 SELECT 1 - ('hello' <<<-> 'Helo world'); --> 0.5714285969734192
 ```
 
-#### Or if you want the boolean results.
+### Boolean Results
+For boolean comparisons:
 ```sql
 SELECT ('hello' % 'Helo world'); --> similarity TRUE
 SELECT ('hello' <% 'Helo world'); --> word_similarity FALSE
 SELECT ('hello' <<% 'Helo world'); --> strict_word_similarity TRUE
 ```
-The result of this depends on the following GUC parameters respectively
-- `pg_trgm.similarity_threshold` (default 0.3)
-- `pg_trgm.word_similarity_threshold` (default 0.6)
-- `pg_trgm.strict_word_similarity_threshold` (default 0.5)
+The results depend on these GUC parameters:
+- `pg_trgm.similarity_threshold` (default: 0.3)
+- `pg_trgm.word_similarity_threshold` (default: 0.6)
+- `pg_trgm.strict_word_similarity_threshold` (default: 0.5)
 
-### Improving performance
-Conveniently pg_trgm module provides GiST and GIN index operator classes that allow you to create an index over a text column. I haven't tested this out fully but apparently, the GIST index provides better performance.
+### Improving Performance
+The pg_trgm module provides both GiST and GIN index operator classes for indexing text columns. While I haven't extensively tested this, GiST indexes reportedly provide better performance:
 ```sql
 CREATE INDEX trgm_idx_text_column ON test_table USING GIST (text_column gist_trgm_ops);
 -- OR
 CREATE INDEX trgm_idx_text_column ON test_table USING GIN (text_column gin_trgm_ops);
 ```
 
-
-
-**See:** [PostgreSQL Docs: pg_trgm](https://www.postgresql.org/docs/current/pgtrgm.html)
-
-## Levenshtein distance (Fuzzier)
+## Levenshtein Distance (Fuzzier)
 >[fuzzystrmatch](https://www.postgresql.org/docs/current/fuzzystrmatch.html) module required: `CREATE extension fuzzystrmatch;`
 
-Levenshtein distance is a measure of the similarity between two strings, measured in terms of the number of characters that need to be changed in order to turn one string into the other.
+Levenshtein distance measures the similarity between two strings by counting the minimum number of single-character edits required to transform one string into another.
 
 ```sql
 SELECT
@@ -196,18 +206,15 @@ LIMIT 5;
  Toby       |          2
 (5 rows)
 ```
-### Performance Improvements
-One of the issues with the Levenshtein method is that there is no way to index it as the index would need to know the input. However, there is something we can do. We can reduce the number of records it has to process by combining it with one of the more fuzzy options below.
 
+### Performance Considerations
+One limitation of the Levenshtein method is that it cannot be directly indexed since the index would need to know the input string. However, you can optimize performance by combining it with other fuzzy matching methods described below.
 
-**See:** [PostgreSQL Docs: fuzzystrmatch](https://www.postgresql.org/docs/current/fuzzystrmatch.html#id-1.11.7.24.7)
-
-## Phonetic similarity (Very Fuzzy)
+## Phonetic Similarity (Very Fuzzy)
 >[fuzzystrmatch](https://www.postgresql.org/docs/current/fuzzystrmatch.html) module required: `CREATE extension fuzzystrmatch;`
 
-For me, I found these next couple of methods particularly interesting. Instead of measuring how similar words are to each other in terms of individual characters. We can actually compare them by how they sound when they are spoken.
-fuzzystrmatch provides three functions out of the box for this.
- - `soundex(string) -> text`: converts a string to its Soundex code.
+These methods are particularly interesting because they compare words based on their pronunciation rather than character-by-character similarity. The fuzzystrmatch module provides three functions:
+ - `soundex(string) -> text`: Converts a string to its Soundex code
 ```sql
 SELECT soundex('Anne'), soundex('Ann'), difference('Anne', 'Ann');
  soundex | soundex | difference
@@ -215,7 +222,7 @@ SELECT soundex('Anne'), soundex('Ann'), difference('Anne', 'Ann');
  A500    | A500    |          4
 (1 row)
 ```
- - `metaphone(string, max_output_length) -> text`: like Soundex, is based on the idea of constructing a representative code for an input string.
+ - `metaphone(string, max_output_length) -> text`: Similar to Soundex, but uses a different algorithm to create a representative code
 ```sql
 SELECT metaphone('brendan', 10), metaphone('brandon', 10);
  metaphone | metaphone
@@ -223,7 +230,7 @@ SELECT metaphone('brendan', 10), metaphone('brandon', 10);
  BRNTN     | BRNTN
 (1 row)
 ```
- - `dmetaphone(string) -> text`/`dmetaphone_alt(string) -> text: computes two “sounds like” strings for a given input string — a “primary” and an “alternate”. In most cases, they are the same, but for non-English names especially they can be a bit different, depending on pronunciation. These functions compute the primary and alternate codes
+ - `dmetaphone(string) -> text`/`dmetaphone_alt(string) -> text`: Computes two "sounds like" strings for a given input — a "primary" and an "alternate" code. While these are usually identical, they can differ for non-English names depending on pronunciation
 ```sql
 SELECT dmetaphone_alt('brendan'), dmetaphone('Brandon');
  dmetaphone_alt | dmetaphone
@@ -232,8 +239,8 @@ SELECT dmetaphone_alt('brendan'), dmetaphone('Brandon');
 (1 row)
 ```
 
-### performance improvements
-Each of these methods can be indexed using a normal function based index
+### Performance Optimization
+Each of these methods can be indexed using a standard function-based index:
 ```sql
 CREATE INDEX idx_sdx_first_name ON mock_data (soundex(first_name));
 --OR
@@ -241,7 +248,8 @@ CREATE INDEX idx_mtf_first_name ON mock_data (metaphone(first_name, 10));
 --OR
 CREATE INDEX idx_dmtf_first_name ON mock_data (dmetaphone(first_name));
 ```
- I mentioned above that we can improve the Levenshtein method by combining it with one of these methods. Once you've indexed the column for one of the phonetics functions you can use that to reduce the dataset and use Levenshtein to finish the filtering
+
+As mentioned earlier, you can improve Levenshtein performance by combining it with phonetic methods. After indexing a column with one of the phonetic functions, use that to reduce the dataset before applying Levenshtein filtering:
 ```sql
 SELECT
     first_name,
@@ -260,7 +268,6 @@ LIMIT 5;
  Bibby      |          1
  Bobbie     |          2
 (5 rows)
-
 ```
 
 **See:** [PostgreSQL Docs: fuzzystrmatch](https://www.postgresql.org/docs/current/fuzzystrmatch.html)
