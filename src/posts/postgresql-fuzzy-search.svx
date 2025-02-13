@@ -1,6 +1,6 @@
 ---
 title: PostgreSQL Fuzzy Search
-date: '2022-03-20'
+date: '2021-02-07'
 description: "A guide to fuzzy searching in PostgreSQL"
 author: Brendan Scullion
 keywords: "postgresql, fuzzy, search, text, similarity, phonetic, levenshtein, trigram, tsvector, tsquery"
